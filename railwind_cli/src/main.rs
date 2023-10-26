@@ -48,7 +48,11 @@ fn main() {
 
     let config = parse_config(&args.config);
     let input: Vec<PathBuf> = get_paths_from_config(&config);
-    let output = Path::new(&args.output);
+    let output = args
+        .output
+        .as_ref()
+        .map(|path| Path::new(path))
+        .unwrap_or(&config.output);
 
     if args.watch {
         let mut watcher = notify::recommended_watcher(|res: Result<Event, Error>| match res {
@@ -63,7 +67,8 @@ fn main() {
                         let input: Vec<PathBuf> = get_paths_from_config(&config);
                         let output = args
                             .output
-                            .map(|path| Path::new(&path))
+                            .as_ref()
+                            .map(|path| Path::new(path))
                             .unwrap_or(&config.output);
 
                         run_parsing(&args, input, output, &config);
