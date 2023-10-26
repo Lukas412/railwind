@@ -100,6 +100,7 @@ fn parse_config(config_path: &str) -> Config {
             Config {
                 content: vec!["index.html".to_string()],
                 extend_collection_options: None,
+                output: PathBuf::from("railwind.css")
             }
         }
     }

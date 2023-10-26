@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use railwind::CollectionOptions;
 use serde::{Deserialize, Serialize};
@@ -7,6 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     pub content: Vec<String>,
     pub extend_collection_options: Option<HashMap<String, CollectionOptions>>,
+    pub output: PathBuf,
 }
 
 impl Default for Config {
@@ -14,6 +16,7 @@ impl Default for Config {
         Self {
             content: vec!["index.html".to_string()],
             extend_collection_options: None,
+            output: PathBuf::from("railwind.css")
         }
     }
 }
@@ -31,7 +34,8 @@ mod tests {
                 ],
                 extend_collection_options: Some({
                     "rs": Html
-                })
+                }),
+                output: "railwind.css"
             )"#;
 
         let ron = ron::from_str::<Config>(config);
@@ -48,5 +52,6 @@ mod tests {
                 .clone(),
             CollectionOptions::Html
         ));
+        assert_eq!(unwrap_ron.output, PathBuf::from("railwind.css"))
     }
 }
