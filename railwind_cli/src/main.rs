@@ -61,7 +61,10 @@ fn main() {
                         let args = Args::parse();
                         let config = parse_config(&args.config);
                         let input: Vec<PathBuf> = get_paths_from_config(&config);
-                        let output = args.output.map(Path::new).unwrap_or(&config.output);
+                        let output = args
+                            .output
+                            .map(|path| Path::new(&path))
+                            .unwrap_or(&config.output);
 
                         run_parsing(&args, input, output, &config);
 
@@ -74,7 +77,7 @@ fn main() {
             },
             Err(e) => panic!("{}", e),
         })
-            .unwrap();
+        .unwrap();
 
         for watch_path in &input {
             watcher
