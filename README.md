@@ -1,4 +1,4 @@
-# Railwind
+# Tailwind-RS
 
 Tailwind compiler rewritten in Rust
 
