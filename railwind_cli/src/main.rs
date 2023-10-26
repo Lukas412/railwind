@@ -97,11 +97,7 @@ fn parse_config(config_path: &str) -> Config {
         Ok(c) => c,
         Err(e) => {
             println!("Failed to parse config: {e}. Running with default config");
-            Config {
-                content: vec!["index.html".to_string()],
-                extend_collection_options: None,
-                output: PathBuf::from("railwind.css")
-            }
+            Config::default()
         }
     }
 }
