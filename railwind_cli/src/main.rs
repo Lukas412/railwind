@@ -15,8 +15,8 @@ mod config;
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// Path to the output file
-    #[arg(short, long, default_value = "railwind.css")]
-    output: String,
+    #[arg(short, long)]
+    output: Option<String>,
 
     /// Include the Tailwind preflight in the output file
     #[arg(short = 'p', long, default_value = "false")]
@@ -61,7 +61,7 @@ fn main() {
                         let args = Args::parse();
                         let config = parse_config(&args.config);
                         let input: Vec<PathBuf> = get_paths_from_config(&config);
-                        let output = Path::new(&args.output);
+                        let output = args.output.map(Path::new).unwrap_or(&config.output);
 
                         run_parsing(&args, input, output, &config);
 
@@ -74,7 +74,7 @@ fn main() {
             },
             Err(e) => panic!("{}", e),
         })
-        .unwrap();
+            .unwrap();
 
         for watch_path in &input {
             watcher
