@@ -17,8 +17,10 @@ ron = { version = "0.8.0" }
 serde = { version = "1.0.152", features = ["derive"] }
 clap = { version = "4.1.6", features = ["derive"] }
 globwalk = "0.8.1"
-railwind = { version = "0.1.5" }
-notify = "5.1.0"
+railwind = { version = "0.1.5", path = "../railwind" }
+notify = "6.1.1"
+anyhow = "1.0.75"
+itertools = "0.11.0"
 
 [[bin]]
 name = "railwind"

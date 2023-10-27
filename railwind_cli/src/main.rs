@@ -1,5 +1,6 @@
 use clap::Parser;
 use config::Config;
+use globwalk::glob;
 use notify::event::ModifyKind;
 use notify::{Error, Event, EventKind, RecursiveMode, Watcher};
 use railwind::{parse_to_string, CollectionOptions, Source, SourceOptions};
@@ -91,41 +92,40 @@ fn main() {
 }
 
 fn parse_config(config_path: &str) -> Config {
-    let config_file = fs::read_to_string(config_path).unwrap();
-
-    match ron::from_str::<Config>(&config_file) {
-        Ok(c) => c,
-        Err(e) => {
-            println!("Failed to parse config: {e}. Running with default config");
-            Config {
-                content: vec!["index.html".to_string()],
-                extend_collection_options: None,
-            }
+    let config_file = match fs::read_to_string(config_path) {
+        Ok(config_file) => config_file,
+        Err(error) => {
+            println!("Could not read config: {}. Using default config.", error);
+            return Config::default();
         }
-    }
+    };
+
+    ron::from_str::<Config>(&config_file).unwrap_or_else(|error| {
+        println!(
+            "Failed to parse config: {}. Running with default config",
+            error
+        );
+        Config::default()
+    })
 }
 
-fn get_paths_from_config(config: &Config) -> Vec<PathBuf> {
+fn get_paths_from_config(config: &Config) -> impl Iterator<Item = &PathBuf> {
     let mut out_paths: Vec<PathBuf> = vec![];
 
-    for c in config.content.clone() {
-        if Path::new(&c).is_dir() {
-            let dir = Path::new(&c);
-            let paths = fs::read_dir(dir).unwrap();
-            for file in paths {
-                let f = file.unwrap();
-                out_paths.push(f.path());
-            }
-        }
-        for entry in globwalk::glob(&c).unwrap() {
-            match entry {
-                Ok(path) => out_paths.push(path.into_path()),
-                Err(err) => panic!("{err}"),
-            }
-        }
-    }
+    let content = config
+        .content
+        .iter()
+        .map(Path::new)
+        .filter(|path| path.is_dir())
+        .flat_map(|path| fs::read_dir(path))
+        .filter_map(|entry| Some(entry));
+    let glob_content = config
+        .content
+        .iter()
+        .flat_map(|content| glob(content).unwrap())
+        .filter_map(Result::ok);
 
-    out_paths
+    content.chain(glob_content).map(|entry| entry.into_iter())
 }
 
 fn run_parsing(args: &Args, input: Vec<PathBuf>, output: &Path, config: &Config) {
@@ -137,7 +137,7 @@ fn run_parsing(args: &Args, input: Vec<PathBuf>, output: &Path, config: &Config)
             input: &i,
             option: if let Some(extension) = i.extension() {
                 if let Some(str) = extension.to_str() {
-                    CollectionOptions::new(str, config.extend_collection_options.clone())
+                    CollectionOptions::new_expand(str, config.extend_collection_options.clone())
                 } else {
                     CollectionOptions::String
                 }

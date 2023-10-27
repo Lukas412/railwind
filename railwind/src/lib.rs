@@ -185,16 +185,17 @@ pub enum CollectionOptions {
 }
 
 impl CollectionOptions {
-    pub fn new(value: &str, expand: Option<HashMap<String, CollectionOptions>>) -> Self {
-        if let Some(exp) = expand {
-            if let Some(opt) = exp.get(value) {
-                return opt.clone();
-            }
-        }
+    pub fn new_expand(value: &str, expand: &HashMap<String, CollectionOptions>) -> Self {
+        expand
+            .get(value)
+            .cloned()
+            .unwrap_or_else(|| Self::new(value))
+    }
 
+    pub fn new(value: &str) -> Self {
         match value {
-            "html" => CollectionOptions::Html,
-            _ => CollectionOptions::String,
+            "html" => Self::Html,
+            _ => Self::String,
         }
     }
 }
@@ -415,15 +416,13 @@ mod tests {
 
     #[test]
     fn test_collection_options() {
-        let opts = CollectionOptions::new("html", None);
-
+        let opts = CollectionOptions::new("html");
         assert!(matches!(opts, CollectionOptions::Html));
 
-        let opts = CollectionOptions::new(
+        let opts = CollectionOptions::new_expand(
             "rs",
-            Some(HashMap::from([("rs".to_string(), CollectionOptions::Html)])),
+            &HashMap::from([("rs".to_string(), CollectionOptions::Html)]),
         );
-
         assert!(matches!(opts, CollectionOptions::Html));
     }
 }
