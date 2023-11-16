@@ -1,6 +1,7 @@
 use clap::Parser;
 use config::Config;
 use globwalk::glob;
+use itertools::Itertools;
 use notify::event::ModifyKind;
 use notify::{Error, Event, EventKind, RecursiveMode, Watcher};
 use railwind::{parse_to_string, CollectionOptions, Source, SourceOptions};
@@ -48,7 +49,7 @@ fn main() {
     }
 
     let config = parse_config(&args.config);
-    let input: Vec<PathBuf> = get_paths_from_config(&config);
+    let input: Vec<_> = get_paths_from_config(&config).collect();
     let output = Path::new(&args.output);
 
     if args.watch {
@@ -61,10 +62,10 @@ fn main() {
 
                         let args = Args::parse();
                         let config = parse_config(&args.config);
-                        let input: Vec<PathBuf> = get_paths_from_config(&config);
+                        let input = get_paths_from_config(&config).collect_vec();
                         let output = Path::new(&args.output);
 
-                        run_parsing(&args, input, output, &config);
+                        run_parsing(&args, input.iter(), output, &config);
 
                         let duration = start.elapsed();
                         println!("Parsing took: {:?}", duration);
@@ -77,17 +78,17 @@ fn main() {
         })
         .unwrap();
 
-        for watch_path in &input {
+        for watch_path in input.iter() {
             watcher
-                .watch(&watch_path, RecursiveMode::NonRecursive)
+                .watch(watch_path, RecursiveMode::NonRecursive)
                 .unwrap();
         }
 
-        run_parsing(&args, input, output, &config);
+        run_parsing(&args, input.iter(), output, &config);
 
         loop {}
     } else {
-        run_parsing(&args, input, output, &config);
+        run_parsing(&args, input.iter(), output, &config);
     }
 }
 
@@ -109,35 +110,45 @@ fn parse_config(config_path: &str) -> Config {
     })
 }
 
-fn get_paths_from_config(config: &Config) -> impl Iterator<Item = &PathBuf> {
-    let mut out_paths: Vec<PathBuf> = vec![];
-
+fn get_paths_from_config<'a>(config: &'a Config) -> impl Iterator<Item = PathBuf> + 'a {
     let content = config
         .content
         .iter()
         .map(Path::new)
         .filter(|path| path.is_dir())
-        .flat_map(|path| fs::read_dir(path))
-        .filter_map(|entry| Some(entry));
+        .filter_map(|path| fs::read_dir(path).ok())
+        .flatten()
+        .filter_map(Result::ok)
+        .map(|entry| entry.path());
     let glob_content = config
         .content
         .iter()
         .flat_map(|content| glob(content).unwrap())
-        .filter_map(Result::ok);
+        .filter_map(Result::ok)
+        .map(|entry| entry.into_path());
 
-    content.chain(glob_content).map(|entry| entry.into_iter())
+    content.chain(glob_content)
 }
 
-fn run_parsing(args: &Args, input: Vec<PathBuf>, output: &Path, config: &Config) {
+fn run_parsing<'a>(
+    args: &Args,
+    input: impl IntoIterator<Item = &'a PathBuf>,
+    output: &Path,
+    config: &Config,
+) {
     let mut warnings = vec![];
 
     let source_options: Vec<SourceOptions> = input
-        .iter()
+        .into_iter()
         .map(|i| SourceOptions {
             input: &i,
             option: if let Some(extension) = i.extension() {
                 if let Some(str) = extension.to_str() {
-                    CollectionOptions::new_expand(str, config.extend_collection_options.clone())
+                    if let Some(options) = &config.extend_collection_options {
+                        CollectionOptions::new_expand(str, options)
+                    } else {
+                        CollectionOptions::new(str)
+                    }
                 } else {
                     CollectionOptions::String
                 }

@@ -326,6 +326,7 @@ pub enum JustifyContent {
     Between,
     Around,
     Evenly,
+    Stretch,
 }
 
 impl JustifyContent {
@@ -337,6 +338,7 @@ impl JustifyContent {
             "between" => Self::Between,
             "around" => Self::Around,
             "evenly" => Self::Evenly,
+            "stretch" => Self::Stretch,
             _ => return None,
         };
 
@@ -351,6 +353,7 @@ impl JustifyContent {
             Self::Between => "space-between",
             Self::Around => "space-around",
             Self::Evenly => "space-evenly",
+            Self::Stretch => "stretch",
         };
 
         Decl::Single(format!("justify-content: {}", val))
